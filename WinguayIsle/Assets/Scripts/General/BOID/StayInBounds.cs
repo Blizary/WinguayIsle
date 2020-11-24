@@ -8,7 +8,8 @@ public class StayInBounds : SteeringBehaviour
 
 	public Bounds bounds;
 
-	float padding = 15;
+	public float padding = 0;
+
 
 
 	public override Vector3 Calculate(Vehicle vehicle)
@@ -41,17 +42,6 @@ public class StayInBounds : SteeringBehaviour
 		else if (pos.y > max.y)
 		{
 			force.y = max.y - pos.y;
-
-		}
-
-
-		if (pos.z < min.z)
-		{
-			force.z = min.z - pos.z;
-		}
-		else if (pos.z > max.z)
-		{
-			force.z = max.z - pos.z;
 
 		}
 

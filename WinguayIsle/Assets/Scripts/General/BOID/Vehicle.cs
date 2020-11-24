@@ -53,21 +53,7 @@ public class Vehicle : MonoBehaviour
 	void FixedUpdate()
 	{
 		Vector2 forces = new Vector2();
-
-
-		switch (combineMode)
-		{
-			case CombineMode.Priority:
-				forces = CalculateWithPriority();
-				break;
-			case CombineMode.Weight:
-				forces = CalculateWithWeight();
-				break;
-
-		}
-
-
-
+		forces = CalculateWithWeight();
 
 		rb.AddForce(forces);
 
@@ -117,6 +103,7 @@ public class Vehicle : MonoBehaviour
 		foreach (SteeringBehaviour b in behaviours)
 		{
 			forces += b.Calculate(this) * b.weight;
+			Debug.DrawLine(transform.position, transform.position + (b.Calculate(this) * b.weight),b.debugColor);
 		}
 
 		if (forces.magnitude > maxForces)
@@ -130,44 +117,9 @@ public class Vehicle : MonoBehaviour
 	}
 
 
-	private Vector3 CalculateWithPriority()
-	{
-		Vector3 totalForces = new Vector3();
-		float forcesAllowed = maxForces;
-		foreach (SteeringBehaviour b in behaviours)
-		{
-			/*
-			if (forcesAllowed <= 0)
-			{
-				break;
-			}
-			*/
-
-
-			Vector3 force = b.Calculate(this) * b.weight;
-			float forceAmount = force.magnitude;
-			if (forceAmount > forcesAllowed)
-			{
-				force = force.normalized * forcesAllowed;
-				forcesAllowed = 0;
-			}
-			else
-			{
-				forcesAllowed -= forceAmount;
-			}
-			totalForces += force;
-		}
-		return totalForces;
-
-
-	}
-
-
 
 	void OnDrawGizmos()
 	{
-		// Draw a yellow sphere at the transform's position
-		Gizmos.color = Color.red;
-		Gizmos.DrawSphere(direction,0.2f);
+
 	}
 }

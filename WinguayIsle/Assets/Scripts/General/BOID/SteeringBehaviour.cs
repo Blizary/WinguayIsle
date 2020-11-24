@@ -9,7 +9,7 @@ public abstract class SteeringBehaviour : MonoBehaviour
 
 	public float weight = 1; // used for prioritization
 	public int priority = 0;
-
+	public Color debugColor = Color.white;
 
 	public abstract Vector3 Calculate(Vehicle vehicle);
 

@@ -9,9 +9,10 @@ using UnityEngine;
 
 public abstract class GroupBehaviour : SteeringBehaviour
 {
-	protected List<Vehicle> neighbours = new List<Vehicle>();
+	[HideInInspector]
+	public List<Vehicle> neighbours = new List<Vehicle>();
 
-	void OnTriggerEnter(Collider c)
+	void OnTriggerEnter2D(Collider2D c)
 	{
 		if (c.gameObject.CompareTag(gameObject.tag))
 		{
@@ -22,7 +23,7 @@ public abstract class GroupBehaviour : SteeringBehaviour
 	}
 
 
-	void OnTriggerExit(Collider c)
+	void OnTriggerExit2D(Collider2D c)
 	{
 		if (c.gameObject.CompareTag(gameObject.tag))
 		{
@@ -31,5 +32,7 @@ public abstract class GroupBehaviour : SteeringBehaviour
 
 		}
 	}
+
+
 
 }

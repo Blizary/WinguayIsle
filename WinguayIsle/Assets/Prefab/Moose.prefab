@@ -26,7 +26,7 @@ Transform:
   m_GameObject: {fileID: 8495884572224071855}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.1, y: 0.1, z: 2}
+  m_LocalScale: {x: 0.2, y: 0.2, z: 2}
   m_Children: []
   m_Father: {fileID: 8495884572721110191}
   m_RootOrder: 0
@@ -70,8 +70,8 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 1
-  m_Sprite: {fileID: 21300000, guid: 7b83f1f3cf2a1ad4bacae2953a105d89, type: 3}
-  m_Color: {r: 0, g: 0, b: 0, a: 1}
+  m_Sprite: {fileID: 21300000, guid: 224c8f503514fc94c8545313d29ad92e, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -90,14 +90,18 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8495884572721110191}
+  - component: {fileID: 5003285210221863483}
   - component: {fileID: 8495884572721110190}
   - component: {fileID: 8495884572721110188}
   - component: {fileID: 8495884572721110189}
   - component: {fileID: 4961112683295754106}
   - component: {fileID: 2780510936479135022}
   - component: {fileID: 717779547188767330}
-  - component: {fileID: 6829568356464469137}
   - component: {fileID: 7379301062592664330}
+  - component: {fileID: 1321201911724528931}
+  - component: {fileID: 4226600928405989664}
+  - component: {fileID: -7345293839431273743}
+  - component: {fileID: -9015170696674075788}
   m_Layer: 0
   m_Name: Moose
   m_TagString: Moose
@@ -120,6 +124,28 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5003285210221863483
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8495884572721110185}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59831e1d76c041b4db0a402e48cbcd27, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  speed: {x: 0.5, y: 0.1, z: 2}
+  coehVal: {x: 1.2, y: 1.4, z: 0}
+  separVal: {x: 0.1, y: 0.05, z: 0}
+  aligVal: {x: 0.5, y: 0.5, z: 1}
+  stayInBVal: {x: 2, y: 2, z: 0}
+  fearRange: 1
+  safetlyRange: 0
+  wolfSpoted: 0
+  wolfClose: 0
+  target: {fileID: 0}
 --- !u!50 &8495884572721110190
 Rigidbody2D:
   serializedVersion: 4
@@ -154,15 +180,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   direction: {x: 0, y: 0, z: 0}
-  maxForces: 100
+  maxForces: 5
   maxSpeed: 1
-  deceleration: 40
-  combineMode: 1
-  behaviours:
-  - {fileID: 4961112683295754106}
-  - {fileID: 2780510936479135022}
-  - {fileID: 717779547188767330}
-  - {fileID: 6829568356464469137}
+  deceleration: 0.3
+  combineMode: 0
+  behaviours: []
 --- !u!58 &8495884572721110189
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -178,7 +200,7 @@ CircleCollider2D:
   m_UsedByComposite: 0
   m_Offset: {x: 0, y: 0}
   serializedVersion: 2
-  m_Radius: 2
+  m_Radius: 1.5
 --- !u!114 &4961112683295754106
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -193,6 +215,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   weight: 1
   priority: 1
+  debugColor: {r: 0.004449993, g: 0.6974397, b: 0.9433962, a: 1}
+  neighbours: []
 --- !u!114 &2780510936479135022
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -207,6 +231,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   weight: 10
   priority: 5
+  debugColor: {r: 0.084549636, g: 0.9433962, b: 0.16704004, a: 1}
+  neighbours: []
 --- !u!114 &717779547188767330
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -221,21 +247,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   weight: 1
   priority: 1
---- !u!114 &6829568356464469137
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8495884572721110185}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f36173c1f9f73b747a7c85286b551e8b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  weight: 1
-  priority: 1
-  target: {fileID: 0}
+  debugColor: {r: 0.8962264, g: 0.12259703, b: 0.8652835, a: 1}
+  neighbours: []
 --- !u!61 &7379301062592664330
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -262,3 +275,67 @@ BoxCollider2D:
   serializedVersion: 2
   m_Size: {x: 0.18816903, y: 0.19776928}
   m_EdgeRadius: 0
+--- !u!114 &1321201911724528931
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8495884572721110185}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0b283563afda5d14f93371b3305d4c2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  weight: 1
+  priority: 0
+  debugColor: {r: 1, g: 0.47529262, b: 0, a: 1}
+  bounds:
+    m_Center: {x: 0, y: 0, z: 0}
+    m_Extent: {x: 0, y: 0, z: 0}
+  padding: 0
+--- !u!114 &4226600928405989664
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8495884572721110185}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c005da4e6d0d4654a90176a999e21cbf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  weight: 1
+  priority: 0
+  debugColor: {r: 0.026210386, g: 0.26620007, b: 0.2924528, a: 1}
+  speed: 0
+--- !u!114 &-7345293839431273743
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8495884572721110185}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f41167ba6a08ce84a98d13f6187e33bb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  weight: 1
+  priority: 0
+  debugColor: {r: 1, g: 0, b: 0.16701889, a: 1}
+  evader: {fileID: 0}
+  panicDistance: 1
+--- !u!114 &-9015170696674075788
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8495884572721110185}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4a4d14d08f23ed4b91e5d67501af673, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

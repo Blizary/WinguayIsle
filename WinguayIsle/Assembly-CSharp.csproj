@@ -63,6 +63,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assets\Scripts\General\BOID\ConstantSpeed.cs" />
+    <Compile Include="Assets\Scripts\General\BOID\Flee.cs" />
     <Compile Include="Assets\Scripts\General\BOID\Group\Alignment.cs" />
     <Compile Include="Assets\Scripts\General\BOID\Group\Cohesion.cs" />
     <Compile Include="Assets\Scripts\General\BOID\Group\GroupBehaviour.cs" />
@@ -73,7 +75,13 @@
     <Compile Include="Assets\Scripts\General\BOID\SteeringHelper.cs" />
     <Compile Include="Assets\Scripts\General\BOID\Vehicle.cs" />
     <Compile Include="Assets\Scripts\General\BOID\Wander.cs" />
-    <Compile Include="Assets\Scripts\Mouse\MouseAI.cs" />
+    <Compile Include="Assets\Scripts\General\TSM\FSM.cs" />
+    <Compile Include="Assets\Scripts\General\TSM\State.cs" />
+    <Compile Include="Assets\Scripts\Moose\FSMMooseCauntion.cs" />
+    <Compile Include="Assets\Scripts\Moose\FSMMooseRun.cs" />
+    <Compile Include="Assets\Scripts\Moose\FSMMooseWander.cs" />
+    <Compile Include="Assets\Scripts\Moose\MooseAI.cs" />
+    <Compile Include="Assets\Scripts\Moose\MooseManager.cs" />
     <Reference Include="UnityEngine">
       <HintPath>C:/Program Files/Unity/Hub/Editor/2019.4.8f1/Editor/Data/Managed/UnityEngine/UnityEngine.dll</HintPath>
     </Reference>
