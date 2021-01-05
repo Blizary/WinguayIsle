@@ -912,9 +912,7 @@ MonoBehaviour:
   maxSpeed: 1
   deceleration: 0.3
   combineMode: 0
-  behaviours:
-  - {fileID: 1632345260}
-  - {fileID: 1632345257}
+  behaviours: []
 --- !u!50 &1632345259
 Rigidbody2D:
   serializedVersion: 4
