@@ -14,7 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   WFCID: 19
   WFCobj: {fileID: 2808066680930758637, guid: f90ee1162c165ed4daec83afe080347e, type: 3}
-  upWFC: []
-  downWFC: []
-  leftWFC: []
-  rightWFC: []
+  WFCtile: {fileID: 11400000, guid: 0d3c0a96f45a5c242b12cd039bff2b80, type: 2}
+  upWFC:
+  - {fileID: 0}
+  downWFC:
+  - {fileID: 0}
+  leftWFC:
+  - {fileID: 0}
+  - {fileID: 0}
+  rightWFC:
+  - {fileID: 0}
+  - {fileID: 0}

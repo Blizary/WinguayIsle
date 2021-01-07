@@ -5,186 +5,572 @@ using UnityEngine.Tilemaps;
 
 public class WFCController : MonoBehaviour
 {
-
-    public bool updateOBJ;// bool that controls if the WFCcontroller scans the sample or not
-    public GameObject sample;// gameobj where all the objs that represente the sample for the WFC are
-    
-    public float objSize; // the size of the obj present in the samples they need to cubes
     public List<WFCScriptableOBJ> dataList; // list of all the available pieces in the board
+    [Header("Settings")]
+    public bool showPropagation;//if triggered will illustrate the propagation of the wave function collapse
+    public bool trueRandom;//if triggered the probability of each tile based on the example is ignored(allows for the creation of bigger maps than the example)
+    public bool surroundedByWater;//if triggered maps the map be surrounded by water
+
+    [Header("Examples")]
+    public bool updateOBJ;// bool that controls if the WFCcontroller scans the sample or not
+    //public GameObject sample;// gameobj where all the objs that represente the sample for the WFC are
+    public List<Tilemap>sampleTilemap; //tilemap that holds the sample for the WFC
+    public float objSize; // the size of the obj present in the samples they need to cubes
 
     [Header("Solution")]
     public Tilemap solution;// gameobj where the solution will go
     public int solutionSize;// number of tiles in the solution, it is a square
-    public Tile posibility;
-    public GameObject posibilityNode; // the gameobj that will store all the posibilities for a certain location in the solution
+    public Tile posibility;//tile that show while the wave hasnt collapsed for this tile
+    public Tile propagated;// tile that ilustrates the propagation of the wave function collaspe
+    public Tile water;//tile for the water
 
-    private Vector2 posOfSample;// this is the current position being checked on the example by the function UpdateExample
+
+    public Vector2Int posOfSample;// this is the current position being checked on the example by the function UpdateExample
+    private WFCpossibility[,] possibilites;//matrix of the possibilites on the tile map
+    private List<WFCpossibility> possibilityList;//keeps the possibilites available and is used to sort them by entropy
+    private List<WFCpossibility> propagateQueu;//stores the tiles that need to be propagate while they wait for their turn\
+
+    private bool ispropagating;
+    private bool generationgWater;
+    public float checkedTiles;//number of tiles checked during sample update that is used to calculate probabilities
+    private List<Vector2Int> waterQueu;
+    private float numOfsamples;//stores the number of samples given and its used to calculate probabilities
     // Start is called before the first frame update
     void Start()
     {
-        if(updateOBJ)
+        checkedTiles = 0;
+        numOfsamples = sampleTilemap.Count;
+        if (updateOBJ)
         {
+
             for(int i = 0;i<dataList.Count;i++)
             {
                 dataList[i].ResetAllWFC();// reset all the previous data in the scriptable obj to prevent bugs and wrong data
             }
-            UpdateExample();
-            sample.SetActive(false);
+            //set active all the samples
+            foreach(Tilemap t in sampleTilemap)
+            {
+                t.gameObject.SetActive(true);
+            }
+
+            while (sampleTilemap.Count!=0)
+            {
+                TileMapSampleUpdate();
+            }
+            CalculateProbabilities();
+
+            
+            
+            
         }
-       
+        possibilityList = new List<WFCpossibility>();
+        possibilites = new WFCpossibility[solutionSize, solutionSize];
+        waterQueu = new List<Vector2Int>();
+        propagateQueu = new List<WFCpossibility>();
+        GenerateSolution();
+        generationgWater = true;
+
     }
 
     // Update is called once per frame
     void Update()
     {
-        GenerateSolution();
+        ProcessPropagateQueu();
     }
 
-    void UpdateExample()
+
+    void ProcessPropagateQueu()
     {
-        RaycastHit2D hit= Physics2D.Raycast(new Vector3(sample.transform.position.x+ posOfSample.x, sample.transform.position.y + posOfSample.y, -5), Vector3.forward);
-        if (hit.collider!=null)
+        if(!ispropagating)
         {
-            Debug.DrawRay(new Vector3(sample.transform.position.x + posOfSample.x, sample.transform.position.y + posOfSample.y, -5), Vector3.forward *10, Color.red,1000);
-            Debug.Log("Did Hit");
-            CheckSides(hit.collider.gameObject);
-            // move on to the next obj and run the function again
+            if(showPropagation)
+            {
+                ispropagating = true;
+                StartCoroutine(WaitForPropagation());
+            }
+            
+            if (propagateQueu.Count != 0)
+            {
+                Propagate(propagateQueu[0].location);
+
+            }
+            else
+            {
+                if(generationgWater)
+                {
+                    if (waterQueu.Count != 0)
+                    {
+                        WFCScriptableOBJ waterScriptable = FindWFCScriptableObj(water);
+                        solution.SetTile(new Vector3Int(waterQueu[0].x, waterQueu[0].y, 0), water);//set the boards to water
+                        possibilites[waterQueu[0].x, waterQueu[0].y].CopyConnectionData(waterScriptable);//get the data to the possibility 
+                        propagateQueu.Add(possibilites[waterQueu[0].x, waterQueu[0].y]);//queu the propagate
+                        possibilityList.Remove(possibilites[waterQueu[0].x, waterQueu[0].y]);//remove it from the list of possibilities since it has been choosen
+                        waterScriptable.probability -= 1;
+                        waterQueu.RemoveAt(0);
+                        NewPropagate();
+                    }
+                    else
+                    {
+                        generationgWater = false;
+                    }
+                }
+                else
+                {
+                    if (possibilityList.Count != 0)
+                    {
+                        NewPropagate();
+                        CollapseBaseOnProbability(possibilityList[0]);
+                        
+
+                    }
+                }
+
+                
+            }
+        }
+        
+    
+
+    }
+
+    IEnumerator WaitForPropagation()
+    {
+        yield return new WaitForSeconds(0.0001f);
+        ispropagating = false;
+    }
+    
+
+    void NewPropagate()
+    {
+        Debug.Log("NEXT WAVE OF PROPAGATION");
+        for(int i=0; i<possibilityList.Count; i++)
+        {
+            possibilityList[i].wasChange = false;
+            if(showPropagation)
+            {
+                solution.SetTile(new Vector3Int(possibilityList[i].location.x, possibilityList[i].location.y, 0), posibility);
+            }
+            
+        }
+    }
+
+    void TileMapSampleUpdate()
+    {
+        if(sampleTilemap[0].GetTile(new Vector3Int(posOfSample.x, posOfSample.y, 0)) !=null)
+        {
+            WFCScriptableOBJ newTile = FindWFCScriptableObj(sampleTilemap[0].GetTile<Tile>(new Vector3Int(posOfSample.x, posOfSample.y, 0)));
+            CheckSidesTileMap(posOfSample, newTile);
+            newTile.probability += 1;
             posOfSample.x += 1;
-            UpdateExample();
+            checkedTiles += 1;
+           
+            TileMapSampleUpdate();
+
         }
         else
         {
-            Debug.DrawRay(new Vector3(sample.transform.position.x + posOfSample.x, sample.transform.position.y + posOfSample.y, -5), Vector3.forward * 1000, Color.white,1000);
-            Debug.Log("Did not Hit");
-            //check if there is a level below
-            Debug.DrawRay(new Vector3(sample.transform.position.x, sample.transform.position.y + (posOfSample.y - 1), -5), Vector3.forward * 1000, Color.black, 1000);
-            RaycastHit2D hitBellow = Physics2D.Raycast(new Vector3(sample.transform.position.x , sample.transform.position.y + (posOfSample.y-1), -5), Vector3.forward);
-            if(hitBellow.collider!=null)
+            if(sampleTilemap[0].GetTile(new Vector3Int(0, posOfSample.y-1, 0)) != null)
             {
-                //continue check the lower level
+                if(!trueRandom)
+                {
+                    if(solutionSize!=0)//has been set before
+                    {
+                        if(solutionSize!= posOfSample.x + 1)//check if samples have the same size
+                        {
+                            Debug.Log("WARNING: Sample have different sizes this will affect the probabilities of each tile");
+                        }
+                    }
+                    solutionSize = posOfSample.x+1;
+                }
                 posOfSample.x = 0;
                 posOfSample.y -= 1;
-                UpdateExample();
-                Debug.Log("Go to lower level");
+                TileMapSampleUpdate();
             }
             else
             {
                 Debug.Log("END OF SAMPLE UPDATE");
+                sampleTilemap[0].gameObject.SetActive(false);
+                posOfSample.x = 0;
+                posOfSample.y = 0;
+                sampleTilemap.RemoveAt(0);
+
             }
         }
 
     }
 
-    void CheckSides(GameObject _wfcFound)
-    {
-        WFCScriptableOBJ neighbour; // used to identify what direction is being tested
 
-        for (int i =0; i<4; i++)
-        { 
-            switch(i)
+    void CheckSidesTileMap(Vector2Int _currentpos, WFCScriptableOBJ  _currentData)
+    {
+        Tile neighbourTile;
+        WFCScriptableOBJ neighbourData;
+
+
+        //RIGHT tile
+        neighbourTile = sampleTilemap[0].GetTile<Tile>(new Vector3Int(_currentpos.x + 1, _currentpos.y, 0));
+        if (neighbourTile != null)
+        {
+            neighbourData = FindWFCScriptableObj(neighbourTile);
+            //Debug.Log("found neighbour to the right");
+            //check if this tile already exists in the list for this direction
+            if (!_currentData.rightWFC.Contains(neighbourData))
             {
-                case 1://RIGHT DIRECTION
-                    //check if there is a neighbourfor this direction
-                    neighbour = Neighbour(_wfcFound, new Vector2(0, 1));
-                    if(neighbour!=null)
-                    {
-                        //first check if it is already present in the list
-                        if(!_wfcFound.GetComponent<WFCObj>().WFCdata.rightWFC.Contains(neighbour))
-                        {
-                            // update this neighbour on the list of the obj for the right direction
-                            _wfcFound.GetComponent<WFCObj>().WFCdata.rightWFC.Add(neighbour);
-                        }
-                        
-                    }
-                    break;
-                case 2:// LEFT DIRECTION
-                    //check if there is a neighbourfor this direction
-                    neighbour = Neighbour(_wfcFound, new Vector2(0, -1));
-                    if (neighbour != null)
-                    {
-                        //first check if it is already present in the list
-                        if (!_wfcFound.GetComponent<WFCObj>().WFCdata.leftWFC.Contains(neighbour))
-                        {
-                            // update this neighbour on the list of the obj for the left direction
-                            _wfcFound.GetComponent<WFCObj>().WFCdata.leftWFC.Add(neighbour);
-                        }
-
-                    }
-                    break;
-
-                case 3:// UP DIRECTION
-                    //check if there is a neighbourfor this direction
-                    neighbour = Neighbour(_wfcFound, new Vector2(1, 0));
-                    if (neighbour != null)
-                    {
-                        //first check if it is already present in the list
-                        if (!_wfcFound.GetComponent<WFCObj>().WFCdata.upWFC.Contains(neighbour))
-                        {
-                            // update this neighbour on the list of the obj for the Up direction
-                            _wfcFound.GetComponent<WFCObj>().WFCdata.upWFC.Add(neighbour);
-                        }
-
-                    }
-                    break;
-
-                case 4:// DOWN DIRECTION
-                    //check if there is a neighbourfor this direction
-                    neighbour = Neighbour(_wfcFound, new Vector2(-1, 0));
-                    if (neighbour != null)
-                    {
-                        //first check if it is already present in the list
-                        if (!_wfcFound.GetComponent<WFCObj>().WFCdata.downWFC.Contains(neighbour))
-                        {
-                            // update this neighbour on the list of the obj for the down direction
-                            _wfcFound.GetComponent<WFCObj>().WFCdata.downWFC.Add(neighbour);
-                        }
-
-                    }
-                    break;
+                // update this neighbour on the list of the obj 
+                _currentData.rightWFC.Add(neighbourData);
+               // Debug.Log("added neighbour that was to the right");
             }
-
         }
 
+        //LEFT tile
+        neighbourTile = sampleTilemap[0].GetTile<Tile>(new Vector3Int(_currentpos.x - 1, _currentpos.y, 0));
+        if (neighbourTile != null)
+        {
+            neighbourData = FindWFCScriptableObj(neighbourTile);
+            //Debug.Log("found neighbour to the left");
+            //check if this tile already exists in the list for this direction
+            if (!_currentData.leftWFC.Contains(neighbourData))
+            {
+                // update this neighbour on the list of the obj 
+                _currentData.leftWFC.Add(neighbourData);
+                //Debug.Log("added neighbour that was to the left");
+            }
+        }
+
+        //UP tile
+        neighbourTile = sampleTilemap[0].GetTile<Tile>(new Vector3Int(_currentpos.x, _currentpos.y+1, 0));
+        if (neighbourTile != null)
+        {
+            neighbourData = FindWFCScriptableObj(neighbourTile);
+            //Debug.Log("found neighbour above");
+            //check if this tile already exists in the list for this direction
+            if (!_currentData.upWFC.Contains(neighbourData))
+            {
+                // update this neighbour on the list of the obj
+                _currentData.upWFC.Add(neighbourData);
+                //Debug.Log("added neighbour that was above");
+            }
+        }
+
+        //DOWN tile
+        neighbourTile = sampleTilemap[0].GetTile<Tile>(new Vector3Int(_currentpos.x, _currentpos.y-1, 0));
+        if (neighbourTile != null)
+        {
+            neighbourData = FindWFCScriptableObj(neighbourTile);
+            //Debug.Log("found neighbour below");
+            //check if this tile already exists in the list for this direction
+            if (!_currentData.downWFC.Contains(neighbourData))
+            {
+                // update this neighbour on the list of the obj
+                _currentData.downWFC.Add(neighbourData);
+                //Debug.Log("added neighbour that was below");
+            }
+        }
     }
 
-
-    WFCScriptableOBJ Neighbour(GameObject _wfcFound,Vector2 _dir)
+    WFCScriptableOBJ FindWFCScriptableObj(Tile _foundTile)
     {
-        RaycastHit2D hit = Physics2D.Raycast(new Vector3(_wfcFound.transform.position.x+(_dir.x*objSize), _wfcFound.transform.position.y + (_dir.y * objSize), -5), Vector3.forward);
+        for(int i=0;i<dataList.Count;i++)
+        {
+            if(dataList[i].WFCtile == _foundTile)
+            {
+               // Debug.Log("found data ! name: " + dataList[i].name);
+                return dataList[i];
+            }
+        }
+        Debug.Log("WARNING: Tile " + _foundTile.name+" not found in the available data set " +
+            "please create a scriptable obj with the tile and add to the data list");
+        return null;
+    }
 
-        if (hit.collider != null)
+    void CalculateProbabilities()
+    {
+
+        foreach(WFCScriptableOBJ obj in dataList)
         {
-            //found a neighbour on the location given
-            Debug.Log("has neighbour at : " + _dir);
-            return hit.collider.GetComponent<WFCObj>().WFCdata;
+            obj.probability = Mathf.RoundToInt (obj.probability / numOfsamples);// gives the average probability
         }
-        else
-        {
-            Debug.DrawRay(new Vector3(_wfcFound.transform.position.x + (_dir.x * objSize), _wfcFound.transform.position.y + (_dir.y * objSize), -5), Vector3.forward * 1000, Color.white, 1000);
-            Debug.Log("There is no neighbour on this direction");
-            return null;
-        }
+
+        checkedTiles = Mathf.RoundToInt ( checkedTiles /numOfsamples);// gives the size one 1 sample
     }
 
 
 
     void GenerateSolution()
     {
-       WFCpossibility[,] possibilites = new WFCpossibility[solutionSize, solutionSize];
+      
 
         //Fill the space with nodes of possibility that store information regarding all possible available options for all nodes
         for (int i = 0; i < solutionSize; i++)
         {
             for (int j = 0; j < solutionSize; j++)
             {
-                solution.SetTile(new Vector3Int(i, -j, 0), posibility);
+                solution.SetTile(new Vector3Int(i, j, 0), posibility);
                 WFCpossibility newPosibility = new WFCpossibility();
+                newPosibility.location = new Vector2Int(i, j);
                 newPosibility.CopyData(dataList);
+                newPosibility.possibleWFC.Sort(SortByProbability);
                 possibilites[i, j] = newPosibility;
+                possibilityList.Add(newPosibility);
             }
         }
 
-        //Pick a random node to start
+
+        if(surroundedByWater)
+        {
+            //make the boarders of the tilemap water
+            for (int i = 0; i < solutionSize; i++)
+            {
+                for (int j = 0; j < solutionSize; j++)
+                {
+                    if (j == 0 || i == 0 || j == solutionSize - 1 || i == solutionSize - 1)
+                    {
+                        waterQueu.Add(new Vector2Int(i, j));
+                    }
+
+                }
+            }
+            Debug.Log("WATER BASE SET");
+        }
+       
+
+        
+
+       
+    }
+
+
+
+
+    void Propagate(Vector2Int _inipos)
+    {
+        //remove options on the neighbour that doesnt correspond to 
+        //the allowed tiles listed in te WFCscriptableOBj for the list of available tiles
+        if(showPropagation)
+        {
+            ispropagating = true;
+        }
+        
+        List<WFCScriptableOBJ> newPossibilites = new List<WFCScriptableOBJ>();
+        Debug.Log("current pos of propagate: " + _inipos);
+
+
+        //right neighbour
+        if (_inipos.x + 1 < solutionSize)//is within the size of the grid
+        {
+            if (!possibilites[_inipos.x + 1, _inipos.y].hasBeenChoosen)//tile to the right is not yet set
+            {
+                //remove the possibilities on the tile to the right on the initial tile base on the current available possibilities
+                possibilites[_inipos.x + 1, _inipos.y].RemovePossibility(possibilites[_inipos.x, _inipos.y].possibleWFC, 0);
+                if(showPropagation)
+                {
+                    solution.SetTile(new Vector3Int(_inipos.x + 1, _inipos.y, 0), propagated);
+                }
+                
+
+                if (possibilites[_inipos.x + 1, _inipos.y].wasChange)//alteration were made to the tile on the right
+                {
+                    if (possibilites[_inipos.x + 1, _inipos.y].CheckIfCollapse())//if true only 1 option remaining
+                    {
+                        Debug.Log("set tile on  " + new Vector2(_inipos.x + 1, _inipos.y));
+                        solution.SetTile(new Vector3Int(_inipos.x + 1, _inipos.y, 0), possibilites[_inipos.x + 1, _inipos.y].FinalTile());
+                        //NewPropagate();
+                        possibilityList.Remove(possibilites[_inipos.x + 1, _inipos.y]);    
+                    }
+
+                    if (!propagateQueu.Contains(possibilites[_inipos.x + 1, _inipos.y]))
+                    {
+                        Debug.Log("added RIGHT OF : " + _inipos);
+                        propagateQueu.Add(possibilites[_inipos.x + 1, _inipos.y]);//add it to the queu so it can be processed
+                    }
+                }
+            }
+        }
+
+
+        //left neightbour
+        if (_inipos.x - 1 >= 0)
+        {
+            if (!possibilites[_inipos.x - 1, _inipos.y].hasBeenChoosen)
+            {
+                possibilites[_inipos.x - 1, _inipos.y].RemovePossibility(possibilites[_inipos.x, _inipos.y].possibleWFC, 1);
+                if(showPropagation)
+                {
+                    solution.SetTile(new Vector3Int(_inipos.x - 1, _inipos.y, 0), propagated);
+                }
+                
+                if (possibilites[_inipos.x - 1, _inipos.y].wasChange)
+                {
+                    if (possibilites[_inipos.x - 1, _inipos.y].CheckIfCollapse())
+                    {
+                        solution.SetTile(new Vector3Int(_inipos.x - 1, _inipos.y, 0), possibilites[_inipos.x - 1, _inipos.y].FinalTile());
+                        //NewPropagate();
+                        possibilityList.Remove(possibilites[_inipos.x - 1, _inipos.y]);
+                    }
+                    if (!propagateQueu.Contains(possibilites[_inipos.x - 1, _inipos.y]))
+                    {
+                        Debug.Log("added LEFT OF : " + _inipos);
+                        propagateQueu.Add(possibilites[_inipos.x - 1, _inipos.y]);
+                    }
+                }
+            }
+        }
+
+
+        //Up neightbour
+        if (_inipos.y + 1 < solutionSize)
+        {
+
+            if (!possibilites[_inipos.x, _inipos.y + 1].hasBeenChoosen)
+            {
+                possibilites[_inipos.x, _inipos.y + 1].RemovePossibility(possibilites[_inipos.x, _inipos.y].possibleWFC, 2);
+                if(showPropagation)
+                {
+                    solution.SetTile(new Vector3Int(_inipos.x, _inipos.y + 1, 0), propagated);
+                }
+                
+                if (possibilites[_inipos.x, _inipos.y + 1].wasChange)
+                {
+                    if (possibilites[_inipos.x, _inipos.y + 1].CheckIfCollapse())
+                    {
+                        solution.SetTile(new Vector3Int(_inipos.x, _inipos.y + 1, 0), possibilites[_inipos.x, _inipos.y + 1].FinalTile());
+                        //NewPropagate();
+                        possibilityList.Remove(possibilites[_inipos.x, _inipos.y + 1]);
+                    }
+                    if (!propagateQueu.Contains(possibilites[_inipos.x, _inipos.y + 1]))
+                    {
+                        Debug.Log("added UP OF : " + _inipos);
+                        propagateQueu.Add(possibilites[_inipos.x, _inipos.y + 1]);
+                    }
+                }
+            }
+        }
+
+
+        //down neightbour
+        if (_inipos.y - 1 >= 0)
+        {
+
+            if (!possibilites[_inipos.x, _inipos.y - 1].hasBeenChoosen)
+            {
+                possibilites[_inipos.x, _inipos.y - 1].RemovePossibility(possibilites[_inipos.x, _inipos.y].possibleWFC, 3);
+                if(showPropagation)
+                {
+                    solution.SetTile(new Vector3Int(_inipos.x, _inipos.y - 1, 0), propagated);
+                }
+                
+                if (possibilites[_inipos.x, _inipos.y - 1].wasChange)
+                {
+                    if (possibilites[_inipos.x, _inipos.y - 1].CheckIfCollapse())
+                    {
+                        solution.SetTile(new Vector3Int(_inipos.x, _inipos.y - 1, 0), possibilites[_inipos.x, _inipos.y - 1].FinalTile());
+                        //NewPropagate();
+                        possibilityList.Remove(possibilites[_inipos.x, _inipos.y - 1]);
+                    }
+                    if (!propagateQueu.Contains(possibilites[_inipos.x, _inipos.y - 1]))
+                    {
+                        Debug.Log("added DOWN OF : " + _inipos);
+                        propagateQueu.Add(possibilites[_inipos.x, _inipos.y - 1]);
+                    }
+                }
+
+            }
+            
+        }
+
+        OrganizebyEntropy();
+        possibilites[_inipos.x, _inipos.y].wasChange = true;
+        propagateQueu.RemoveAt(0);
+
+    }
+
+
+    static int SortByEntropy(WFCpossibility _possi1, WFCpossibility _possi2)
+    {
+        return _possi1.possibleWFC.Count.CompareTo(_possi2.possibleWFC.Count);
+    }
+
+    void OrganizebyEntropy()
+    {
+        //propagateQueu.Sort(SortByEntropy);
+        possibilityList.Sort(SortByEntropy);
+        
+
+    }
+
+    float GetProbability(WFCScriptableOBJ _check)
+    {
+        Debug.Log("probability in the scriptable obj is " + _check.probability);
+        Debug.Log("number of tiles " + checkedTiles);
+        Debug.Log("probability of this tile is " + (((_check.probability / checkedTiles) * 100)));
+        return (((_check.probability / checkedTiles)*100));
+       
+    }
+
+    float GetRelativeProbability(float _probabilityToScale, float _hightesProbability)
+    {
+        return (_probabilityToScale * 100) / _hightesProbability;
+    }
+
+    static int SortByProbability(WFCScriptableOBJ _prob1, WFCScriptableOBJ _prob2)
+    {
+        return _prob1.probability.CompareTo(_prob2.probability);
+    }
+
+
+    void CollapseBaseOnProbability(WFCpossibility _tile)
+    {
+        Debug.Log("PROPAGATE WITH PROBABILITY");
+        
+        if (trueRandom)
+        {
+            WFCScriptableOBJ randomObj;
+            int rand = Random.Range(0, _tile.possibleWFC.Count);
+            randomObj = _tile.possibleWFC[rand];
+            _tile.CopyConnectionData(randomObj);
+        }
+        else
+        {
+            _tile.CopyConnectionData(RandomTile(_tile));
+        }
+        
+        solution.SetTile(new Vector3Int(_tile.location.x,_tile.location.y,0), _tile.possibleWFC[0].WFCtile);
+        possibilityList.Remove(_tile);
+        propagateQueu.Add(_tile);
+
+    }
+
+    WFCScriptableOBJ RandomTile(WFCpossibility _tile)
+    {
+        WFCScriptableOBJ hightsProb = _tile.possibleWFC[0];
+        //obtain the hights probability for this group of possibilities
+        for(int i=0;i< _tile.possibleWFC.Count;i++)
+        {
+            if(GetProbability(_tile.possibleWFC[i])> GetProbability(hightsProb))
+            {
+                hightsProb = _tile.possibleWFC[i];
+            }
+        }
+
+        Debug.Log("hightes probabilit is " + GetProbability(hightsProb));
+        //get a random number between 0 and 100 for probability
+        int rand = Random.Range(0, 100);
+        //sort the possibleWFC by probability
+        _tile.possibleWFC.Sort(SortByProbability);
+
+        //run a for loop until we find the 1st number
+        //where our random is hightest than the relative probability
+
+        for (int i = 0; i < _tile.possibleWFC.Count; i++)
+        {
+            if (GetRelativeProbability(GetProbability(_tile.possibleWFC[i]), GetProbability(hightsProb)) > rand)
+            {
+                _tile.possibleWFC[i].probability -= 1;
+                return _tile.possibleWFC[i];
+            }
+        }
+      
+        //if none are higher than it is the hights probability ( the 100%)
+        return hightsProb;
     }
     
 }

@@ -1,13 +1,15 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Tilemaps;
 
 [CreateAssetMenu(fileName = "Data", menuName = "ScriptableObjects/WFC", order = 1)]
 public class WFCScriptableOBJ : ScriptableObject
 {
 
-    public int WFCID;// id used to identify the obj 
-    public GameObject WFCobj; // prefab of the obj related to this scriptable Obj
+ 
+    public Tile WFCtile;
+    public float probability;
 
     [SerializeField] public List<WFCScriptableOBJ> upWFC; // list of obj connect to this obj on the top position
     [SerializeField] public List<WFCScriptableOBJ> downWFC; // list of obj connect to this obj on the down position
@@ -21,6 +23,7 @@ public class WFCScriptableOBJ : ScriptableObject
         downWFC.Clear();
         leftWFC.Clear();
         rightWFC.Clear();
+        probability = 0;
     }
 
 }

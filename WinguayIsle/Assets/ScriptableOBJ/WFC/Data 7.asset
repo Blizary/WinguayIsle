@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   WFCID: 7
   WFCobj: {fileID: 8408944912649274225, guid: cd5dd4c6b9582a14eb87c5e586e3634a, type: 3}
+  WFCtile: {fileID: 11400000, guid: 5ae38197d019e6c469bdfaf9a9e3c96d, type: 2}
   upWFC:
   - {fileID: 11400000}
   - {fileID: 11400000, guid: b75d10b71e96f524c9269d41a33644fa, type: 2}
